@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Posts</title>
+<style>
+td {padding:5px;}
+button{margin: 5px;}
+</style>
+</head>
+<body>
+    <h2>Список постов</h2>
+    <div>
+        <input type="hidden" id="postId" />
+        <p>
+            Title:<br/>
+            <input id="title" />
+        </p>
+        <p>
+            Content:<br />
+            <input id="content" />
+        </p>
+        <p>
+            User:<br />
+            <input id="user_id" />
+        </p>
+        <p>
+            <button id="saveBtn">Сохранить</button>
+            <button id="resetBtn">Сбросить</button>
+        </p>
+    </div>
+    <table>
+        <thead><tr><th>Title</th><th>Content</th><th>User</th></tr></thead>
+        <tbody>
+        </tbody>
+    </table>
+
+    <script>
+        async function getPosts() {
+            const response = await fetch("/api/posts", {
+                method: "GET",
+                headers: { "Accept": "application/json" }
+            });
+            if (response.ok === true) {
+                const posts = await response.json();
+                const rows = document.querySelector("tbody");
+                posts.forEach(post => rows.append(row(post)));
+            }
+        }
+
+        async function getPost(id) {
+            const response = await fetch(`/api/posts/${id}`, {
+                method: "GET",
+                headers: { "Accept": "application/json" }
+            });
+            if (response.ok === true) {
+                const post = await response.json();
+                document.getElementById("postId").value = post.id;
+                document.getElementById("title").value = post.title;
+                document.getElementById("content").value = post.content;
+                document.getElementById("user_id").value = post.user_id;
+            }
+            else {
+                const error = await response.json();
+                console.log(error.message);
+            }
+        }
+
+        async function createPost(title, content, user_id) {
+
+            const response = await fetch("api/posts", {
+                method: "POST",
+                headers: { "Accept": "application/json", "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    title: title,
+                    content: content,
+                    user_id: user_id
+                })
+            });
+            if (response.ok === true) {
+                const post = await response.json();
+                document.querySelector("tbody").append(row(post));
+            }
+            else {
+                const error = await response.json();
+                console.log(error.message);
+            }
+        }
+
+        async function editPost(postId, title, content, user_id) {
+            const response = await fetch("api/posts", {
+                method: "PUT",
+                headers: { "Accept": "application/json", "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    id: postId,
+                    title: title,
+                    content: content,
+                    user_id: user_id
+                })
+            });
+            if (response.ok === true) {
+                const post = await response.json();
+                document.querySelector(`tr[data-rowid='${post.id}']`).replaceWith(row(post));
+            }
+            else {
+                const error = await response.json();
+                console.log(error.message);
+            }
+        }
+
+        async function deletePost(id) {
+            const response = await fetch(`/api/posts/${id}`, {
+                method: "DELETE",
+                headers: { "Accept": "application/json" }
+            });
+            if (response.ok === true) {
+                const post = await response.json();
+                document.querySelector(`tr[data-rowid='${post.id}']`).remove();
+            }
+            else {
+                const error = await response.json();
+                console.log(error.message);
+            }
+        }
+
+        function reset() {
+            document.getElementById("postId").value =
+            document.getElementById("title").value =
+            document.getElementById("content").value =
+            document.getElementById("user_id").value = "";
+        }
+
+        function row(post) {
+            const tr = document.createElement("tr");
+            tr.setAttribute("data-rowid", post.id);
+
+            const titleTd = document.createElement("td");
+            titleTd.append(post.title);
+            tr.append(titleTd);
+
+            const contentTd = document.createElement("td");
+            contentTd.append(post.content);
+            tr.append(contentTd);
+
+            const user_idTd = document.createElement("td");
+            user_idTd.append(post.user_id);
+            tr.append(user_idTd);
+
+            const linksTd = document.createElement("td");
+
+            const editLink = document.createElement("button");
+            editLink.append("Изменить");
+            editLink.addEventListener("click", async() => await getPost(post.id));
+            linksTd.append(editLink);
+
+            const removeLink = document.createElement("button");
+            removeLink.append("Удалить");
+            removeLink.addEventListener("click", async () => await deletePost(post.id));
+
+            linksTd.append(removeLink);
+            tr.appendChild(linksTd);
+
+            return tr;
+        }
+
+        document.getElementById("resetBtn").addEventListener("click", () =>  reset());
+
+        document.getElementById("saveBtn").addEventListener("click", async () => {
+            const id = document.getElementById("postId").value;
+            const title = document.getElementById("title").value;
+            const content = document.getElementById("content").value;
+            const user_id = document.getElementById("user_id").value;
+            if (id === "")
+                await createPost(title, content, user_id);
+            else
+                await editPost(id, title, content, user_id);
+            reset();
+        });
+
+        getPosts();
+    </script>
+</body>
+</html>

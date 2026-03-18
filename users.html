@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Users</title>
+<style>
+td {padding:5px;}
+button{margin: 5px;}
+</style>
+</head>
+<body>
+    <h2>Список пользователей</h2>
+    <div>
+        <input type="hidden" id="userId" />
+        <p>
+            Username:<br/>
+            <input id="username" />
+        </p>
+        <p>
+            Email:<br />
+            <input id="email" />
+        </p>
+        <p>
+            Password:<br />
+            <input id="password" />
+        </p>
+        <p>
+            <button id="saveBtn">Сохранить</button>
+            <button id="resetBtn">Сбросить</button>
+        </p>
+    </div>
+    <table>
+        <thead><tr><th>Username</th><th>Email</th><th>Password</th></tr></thead>
+        <tbody>
+        </tbody>
+    </table>
+
+    <script>
+        async function getUsers() {
+            const response = await fetch("/api/users", {
+                method: "GET",
+                headers: { "Accept": "application/json" }
+            });
+            if (response.ok === true) {
+                const users = await response.json();
+                const rows = document.querySelector("tbody");
+                users.forEach(user => rows.append(row(user)));
+            }
+        }
+
+        async function getUser(id) {
+            const response = await fetch(`/api/users/${id}`, {
+                method: "GET",
+                headers: { "Accept": "application/json" }
+            });
+            if (response.ok === true) {
+                const user = await response.json();
+                document.getElementById("userId").value = user.id;
+                document.getElementById("username").value = user.username;
+                document.getElementById("email").value = user.email;
+                document.getElementById("password").value = user.password;
+            }
+            else {
+                const error = await response.json();
+                console.log(error.message);
+            }
+        }
+
+        async function createUser(username, email, password) {
+
+            const response = await fetch("api/users", {
+                method: "POST",
+                headers: { "Accept": "application/json", "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    username: username,
+                    email: email,
+                    password: password
+                })
+            });
+            if (response.ok === true) {
+                const user = await response.json();
+                document.querySelector("tbody").append(row(user));
+            }
+            else {
+                const error = await response.json();
+                console.log(error.message);
+            }
+        }
+
+        async function editUser(userId, username, email, password) {
+            const response = await fetch("api/users", {
+                method: "PUT",
+                headers: { "Accept": "application/json", "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    id: userId,
+                    username: username,
+                    email: email,
+                    password: password
+                })
+            });
+            if (response.ok === true) {
+                const user = await response.json();
+                document.querySelector(`tr[data-rowid='${user.id}']`).replaceWith(row(user));
+            }
+            else {
+                const error = await response.json();
+                console.log(error.message);
+            }
+        }
+
+        async function deleteUser(id) {
+            const response = await fetch(`/api/users/${id}`, {
+                method: "DELETE",
+                headers: { "Accept": "application/json" }
+            });
+            if (response.ok === true) {
+                const user = await response.json();
+                document.querySelector(`tr[data-rowid='${user.id}']`).remove();
+            }
+            else {
+                const error = await response.json();
+                console.log(error.message);
+            }
+        }
+
+        function reset() {
+            document.getElementById("userId").value =
+            document.getElementById("username").value =
+            document.getElementById("email").value =
+            document.getElementById("password").value = "";
+        }
+
+        function row(user) {
+            const tr = document.createElement("tr");
+            tr.setAttribute("data-rowid", user.id);
+
+            const nameTd = document.createElement("td");
+            nameTd.append(user.username);
+            tr.append(nameTd);
+
+            const emailTd = document.createElement("td");
+            emailTd.append(user.email);
+            tr.append(emailTd);
+
+            const passwordTd = document.createElement("td");
+            passwordTd.append(user.password);
+            tr.append(passwordTd);
+
+            const linksTd = document.createElement("td");
+
+            const editLink = document.createElement("button");
+            editLink.append("Изменить");
+            editLink.addEventListener("click", async() => await getUser(user.id));
+            linksTd.append(editLink);
+
+            const removeLink = document.createElement("button");
+            removeLink.append("Удалить");
+            removeLink.addEventListener("click", async () => await deleteUser(user.id));
+
+            linksTd.append(removeLink);
+            tr.appendChild(linksTd);
+
+            return tr;
+        }
+
+        document.getElementById("resetBtn").addEventListener("click", () =>  reset());
+
+        document.getElementById("saveBtn").addEventListener("click", async () => {
+            const id = document.getElementById("userId").value;
+            const username = document.getElementById("username").value;
+            const email = document.getElementById("email").value;
+            const password = document.getElementById("password").value;
+            if (id === "")
+                await createUser(username, email, password);
+            else
+                await editUser(id, username, email, password);
+            reset();
+        });
+
+        getUsers();
+    </script>
+</body>
+</html>
